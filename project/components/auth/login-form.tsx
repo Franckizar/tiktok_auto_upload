@@ -23,9 +23,8 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const { login, loginWithTikTok, isLoading } = useAuth();
 
   const {
     register,
@@ -36,15 +35,20 @@ export function LoginForm() {
   });
 
   const onSubmit = async (data: LoginForm) => {
-    setIsLoading(true);
     setError('');
-    
     try {
       await login(data.email, data.password);
-    } catch (error: any) {
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
+    } catch (err: any) {
+      setError(err?.message ?? 'Login failed');
+    }
+  };
+
+  const handleTikTokLogin = async () => {
+    setError('');
+    try {
+      await loginWithTikTok();
+    } catch {
+      setError('TikTok login failed');
     }
   };
 
@@ -53,16 +57,12 @@ export function LoginForm() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="w-full max-w-md"
+      className="max-w-md mx-auto"
     >
       <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold gradient-text">
-            Welcome Back
-          </CardTitle>
-          <CardDescription>
-            Sign in to your TikTok Scheduler account
-          </CardDescription>
+          <CardTitle className="text-2xl font-bold gradient-text">Welcome Back</CardTitle>
+          <CardDescription>Sign in to your TikTok Scheduler account</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -75,9 +75,7 @@ export function LoginForm() {
                 {...register('email')}
                 className={errors.email ? 'border-destructive' : ''}
               />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -97,22 +95,14 @@ export function LoginForm() {
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
                 </Button>
               </div>
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
-              )}
+              {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
             </div>
 
             {error && (
-              <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-                {error}
-              </div>
+              <p className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">{error}</p>
             )}
 
             <Button
@@ -129,25 +119,29 @@ export function LoginForm() {
                 'Sign In'
               )}
             </Button>
-
-            <div className="text-center space-y-2">
-              <Link 
-                href="/auth/forgot-password" 
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                Forgot your password?
-              </Link>
-              <p className="text-sm text-muted-foreground">
-                Don&apos;t have an account?{' '}
-                <Link 
-                  href="/auth/register" 
-                  className="text-primary hover:underline font-medium"
-                >
-                  Sign up
-                </Link>
-              </p>
-            </div>
           </form>
+
+          <div className="mt-4 text-center">
+            <Button
+              onClick={handleTikTokLogin}
+              className="w-full bg-black text-white py-2 rounded"
+              disabled={isLoading}
+            >
+              {isLoading ? "Logging in..." : "Login with TikTok"}
+            </Button>
+          </div>
+
+          <div className="text-center space-y-2 mt-6">
+            <Link href="/auth/forgot-password" className="text-sm text-muted-foreground hover:text-primary">
+              Forgot your password?
+            </Link>
+            <p className="text-sm text-muted-foreground">
+              Don't have an account?{' '}
+              <Link href="/auth/register" className="text-primary hover:underline font-medium">
+                Sign up
+              </Link>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </motion.div>

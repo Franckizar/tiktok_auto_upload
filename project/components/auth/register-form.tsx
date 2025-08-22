@@ -1,23 +1,23 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/contexts/auth-context';
-import Link from 'next/link';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/contexts/auth-context";
+import Link from "next/link";
 
 const registerSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters'),
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -29,9 +29,8 @@ type RegisterForm = z.infer<typeof registerSchema>;
 export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { register: registerUser } = useAuth();
+  const [error, setError] = useState("");
+  const { register: registerUser, isLoading } = useAuth();
 
   const {
     register,
@@ -42,15 +41,11 @@ export function RegisterForm() {
   });
 
   const onSubmit = async (data: RegisterForm) => {
-    setIsLoading(true);
-    setError('');
-    
+    setError("");
     try {
       await registerUser(data.email, data.password, data.username);
-    } catch (error: any) {
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
+    } catch (err: any) {
+      setError(err?.message || "Registration failed.");
     }
   };
 
@@ -77,8 +72,8 @@ export function RegisterForm() {
               <Input
                 id="username"
                 placeholder="Choose a username"
-                {...register('username')}
-                className={errors.username ? 'border-destructive' : ''}
+                {...register("username")}
+                className={errors.username ? "border-destructive" : ""}
               />
               {errors.username && (
                 <p className="text-sm text-destructive">{errors.username.message}</p>
@@ -91,8 +86,8 @@ export function RegisterForm() {
                 id="email"
                 type="email"
                 placeholder="Enter your email"
-                {...register('email')}
-                className={errors.email ? 'border-destructive' : ''}
+                {...register("email")}
+                className={errors.email ? "border-destructive" : ""}
               />
               {errors.email && (
                 <p className="text-sm text-destructive">{errors.email.message}</p>
@@ -104,10 +99,10 @@ export function RegisterForm() {
               <div className="relative">
                 <Input
                   id="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   placeholder="Create a password"
-                  {...register('password')}
-                  className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
+                  {...register("password")}
+                  className={errors.password ? "border-destructive pr-10" : "pr-10"}
                 />
                 <Button
                   type="button"
@@ -133,10 +128,12 @@ export function RegisterForm() {
               <div className="relative">
                 <Input
                   id="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm your password"
-                  {...register('confirmPassword')}
-                  className={errors.confirmPassword ? 'border-destructive pr-10' : 'pr-10'}
+                  {...register("confirmPassword")}
+                  className={
+                    errors.confirmPassword ? "border-destructive pr-10" : "pr-10"
+                  }
                 />
                 <Button
                   type="button"
@@ -174,15 +171,15 @@ export function RegisterForm() {
                   Creating account...
                 </>
               ) : (
-                'Create Account'
+                "Create Account"
               )}
             </Button>
 
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
-                Already have an account?{' '}
-                <Link 
-                  href="/auth/login" 
+                Already have an account?{" "}
+                <Link
+                  href="/auth/login"
                   className="text-primary hover:underline font-medium"
                 >
                   Sign in
