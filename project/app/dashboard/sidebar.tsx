@@ -21,10 +21,10 @@ import { useAuth } from '@/contexts/auth-context';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
-  { name: 'Schedule', href: '/schedule', icon: Calendar },
-  { name: 'Upload', href: '/upload', icon: Upload },
-  { name: 'History', href: '/history', icon: History },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Schedule', href: '/dashboard/schedule', icon: Calendar },
+  { name: 'Upload', href: '/dashboard/upload', icon: Upload },
+  { name: 'History', href: '/dashboard/history', icon: History },
+  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
 const adminNavigation = [

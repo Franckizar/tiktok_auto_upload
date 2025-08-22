@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/auth-context';
-import { Sidebar } from '@/components/layout/sidebar';
+import { Sidebar } from '@/app/dashboard/sidebar';
 import { Header } from '@/components/layout/header';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
