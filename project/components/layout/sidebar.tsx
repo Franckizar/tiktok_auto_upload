@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Home, 
@@ -33,12 +33,21 @@ const adminNavigation = [
 
 export function Sidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
   const { user } = useAuth();
+
+  // Only render window-dependent code after mount
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const allNavigation = user?.role === 'admin' 
     ? [...navigation, ...adminNavigation] 
     : navigation;
+
+  // Don't render window-dependent animation or positioning until mounted
+  const sidebarX = isMobileOpen || (isMounted && window.innerWidth >= 768) ? 0 : -280;
 
   return (
     <>
@@ -66,9 +75,7 @@ export function Sidebar() {
       {/* Sidebar */}
       <motion.div
         initial={{ x: -280 }}
-        animate={{ 
-          x: isMobileOpen || window.innerWidth >= 768 ? 0 : -280 
-        }}
+        animate={{ x: sidebarX }}
         className={cn(
           'fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-40',
           'md:relative md:translate-x-0',
