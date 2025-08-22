@@ -103,11 +103,13 @@ export function FileUpload({ onFileSelect, selectedFile, onRemoveFile }: FileUpl
     );
   }
 
+  // Separate the dropzone props from motion props
+  const dropzoneProps = getRootProps();
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      {...getRootProps()}
       className={`
         border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all
         ${isDragActive 
@@ -115,6 +117,16 @@ export function FileUpload({ onFileSelect, selectedFile, onRemoveFile }: FileUpl
           : 'border-gray-300 hover:border-gray-400'
         }
       `}
+      // Apply dropzone props except for potentially conflicting ones
+      onClick={dropzoneProps.onClick}
+      onKeyDown={dropzoneProps.onKeyDown}
+      onDrop={dropzoneProps.onDrop}
+      onDragEnter={dropzoneProps.onDragEnter}
+      onDragLeave={dropzoneProps.onDragLeave}
+      onDragOver={dropzoneProps.onDragOver}
+      tabIndex={dropzoneProps.tabIndex}
+      role={dropzoneProps.role}
+      ref={dropzoneProps.ref}
     >
       <input {...getInputProps()} />
       <motion.div

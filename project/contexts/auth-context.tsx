@@ -23,14 +23,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User>({
+  // Fix: Change useState<User> to useState<User | null> and allow null initialization
+  const [user, setUser] = useState<User | null>({
     id: '1',
     email: 'test@example.com',
     username: 'testuser',
     role: 'user',
     tiktok_connected: false,
   }); // Mock logged-in user
-  const [isLoading, setIsLoading] = useState(false); // No loading
+  
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const login = async (email: string, password: string) => {
@@ -58,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    setUser(null);
+    setUser(null); // This will now work without TypeScript error
     router.push('/auth/login');
   };
 
