@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TikTok Scheduler Demo</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f0f2f5; padding: 20px; }
+  .container { max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+  h1 { text-align: center; color: #ff0050; }
+  input, textarea, select, button { width: 100%; padding: 10px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; }
+  button { background: #ff0050; color: #fff; border: none; cursor: pointer; }
+  button:hover { background: #e60044; }
+  .preview { margin-top: 15px; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>TikTok Scheduler Demo</h1>
+
+  <!-- TikTok Login -->
+  <button id="loginBtn">Login with TikTok</button>
+
+  <!-- Upload Video/Image -->
+  <label for="media">Upload Video or Photos:</label>
+  <input type="file" id="media" accept="video/*,image/*" multiple>
+
+  <!-- Caption & Hashtags -->
+  <label for="caption">Caption & Hashtags:</label>
+  <textarea id="caption" placeholder="#fun #demo"></textarea>
+
+  <!-- Schedule Time -->
+  <label for="schedule">Schedule Date & Time:</label>
+  <input type="datetime-local" id="schedule">
+
+  <!-- Auto Add Music -->
+  <label>
+    <input type="checkbox" id="autoMusic"> Auto Add Music
+  </label>
+
+  <!-- Preview / Schedule -->
+  <button id="scheduleBtn">Schedule Post</button>
+
+  <div class="preview" id="preview"></div>
+</div>
+
+<script>
+  const loginBtn = document.getElementById('loginBtn');
+  const scheduleBtn = document.getElementById('scheduleBtn');
+  const preview = document.getElementById('preview');
+
+  loginBtn.addEventListener('click', () => {
+    alert("This would open TikTok OAuth login flow.");
+  });
+
+  scheduleBtn.addEventListener('click', () => {
+    const mediaFiles = document.getElementById('media').files;
+    const caption = document.getElementById('caption').value;
+    const scheduleTime = document.getElementById('schedule').value;
+    const autoMusic = document.getElementById('autoMusic').checked;
+
+    if(mediaFiles.length === 0) {
+      alert("Please upload at least one video or photo.");
+      return;
+    }
+    if(!scheduleTime) {
+      alert("Please select a schedule time.");
+      return;
+    }
+
+    let filesList = Array.from(mediaFiles).map(f => f.name).join(", ");
+    preview.innerHTML = `
+      <p><strong>Files:</strong> ${filesList}</p>
+      <p><strong>Caption:</strong> ${caption}</p>
+      <p><strong>Schedule Time:</strong> ${scheduleTime}</p>
+      <p><strong>Auto Music:</strong> ${autoMusic ? "Yes" : "No"}</p>
+      <p style="color: green; font-weight:bold;">Post scheduled successfully (demo)</p>
+    `;
+  });
+</script>
+
+</body>
+</html>
