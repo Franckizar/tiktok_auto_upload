@@ -1,6 +1,7 @@
+// Updated auth-context.tsx
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface User {
@@ -8,7 +9,7 @@ interface User {
   email: string;
   username: string;
   role: 'user' | 'admin';
-  tiktok_connected: boolean;
+  tiktokConnected: boolean;
 }
 
 interface AuthContextType {
@@ -22,84 +23,112 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const mockDatabaseUsers: User[] = [
-  {
-    id: '1',
-    email: 'user@example.com',
-    username: 'existingUser',
-    role: 'user',
-    tiktok_connected: false,
-  },
-];
+const API_BASE_URL = 'http://localhost:8080';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+  useEffect(() => {
+    // Check for existing token on app load
+    const token = localStorage.getItem('token');
+    if (token) {
+      // Validate token and get user info
+      validateToken(token);
+    }
+  }, []);
+
+  const validateToken = async (token: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      } else {
+        localStorage.removeItem('token');
+      }
+    } catch (error) {
+      localStorage.removeItem('token');
+    }
+  };
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
-    await delay(1000); // simulate server delay
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    // Find user in mock DB (password check skipped for simplicity)
-    const foundUser = mockDatabaseUsers.find((u) => u.email === email);
-    if (!foundUser) {
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Login failed');
+      }
+
+      const data = await response.json();
+      localStorage.setItem('token', data.token);
+      setUser(data.user);
+      router.push('/dashboard');
+    } catch (error) {
+      throw error;
+    } finally {
       setIsLoading(false);
-      throw new Error('User not found');
     }
-
-    setUser(foundUser);
-    setIsLoading(false);
-    router.push('/dashboard');
   };
 
   const loginWithTikTok = async () => {
     setIsLoading(true);
-    await delay(1000); // simulate TikTok OAuth delay
-
-    // Simulate logging in via TikTok API and returning user info
-    const tiktokUser: User = {
-      id: 'tiktok-123',
-      email: '', // TikTok might not provide email
-      username: 'mock_tiktok_user',
-      role: 'user',
-      tiktok_connected: true,
-    };
-
-    setUser(tiktokUser);
-    setIsLoading(false);
-    router.push('/dashboard');
+    try {
+      // Get TikTok auth URL from backend
+      const response = await fetch(`${API_BASE_URL}/auth/tiktok`);
+      const authUrl = await response.text();
+      
+      // Redirect to TikTok OAuth
+      window.location.href = authUrl;
+    } catch (error) {
+      setIsLoading(false);
+      throw new Error('TikTok login failed');
+    }
   };
 
   const register = async (email: string, password: string, username: string) => {
     setIsLoading(true);
-    await delay(1000); // simulate server delay
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password, username }),
+      });
 
-    // Check if user already exists
-    if (mockDatabaseUsers.some((u) => u.email === email)) {
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Registration failed');
+      }
+
+      const data = await response.json();
+      localStorage.setItem('token', data.token);
+      setUser(data.user);
+      router.push('/dashboard');
+    } catch (error) {
+      throw error;
+    } finally {
       setIsLoading(false);
-      throw new Error('Email already registered');
     }
-
-    const newUser: User = {
-      id: (mockDatabaseUsers.length + 1).toString(),
-      email,
-      username,
-      role: 'user',
-      tiktok_connected: false,
-    };
-
-    mockDatabaseUsers.push(newUser);
-
-    setUser(newUser);
-    setIsLoading(false);
-    router.push('/dashboard');
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
     setUser(null);
     router.push('/auth/login');
   };

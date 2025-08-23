@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "http://localhost:3000") // Adjust for your frontend URL
+// @CrossOrigin(origins = "*")
+
 public class AuthController {
     
     private final AuthService authService;
