@@ -31,7 +31,7 @@ public class SecurityConfig {
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/auth/**", "/h2-console/**").permitAll()
+                 .requestMatchers("/auth/**", "/h2-console/**", "/hello").permitAll()
                 .anyRequest().authenticated()
             )
             .headers().frameOptions().disable(); // For H2 console
