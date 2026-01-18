@@ -1,4 +1,3 @@
-// Updated auth-context.tsx
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
@@ -6,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 interface User {
   id: string;
-  email: string;
+  email?: string;
   username: string;
   role: 'user' | 'admin';
   tiktokConnected: boolean;
@@ -23,18 +22,18 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = 'https://tiktok-automation-tk0j.onrender.com';
+
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  // Check token on load
   useEffect(() => {
-    // Check for existing token on app load
     const token = localStorage.getItem('token');
-    if (token) {
-      // Validate token and get user info
+    if (token && !user) {
       validateToken(token);
     }
   }, []);
@@ -42,18 +41,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const validateToken = async (token: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
       } else {
         localStorage.removeItem('token');
       }
-    } catch (error) {
+    } catch {
       localStorage.removeItem('token');
     }
   };
@@ -63,37 +59,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Login failed');
-      }
-
+      if (!response.ok) throw new Error('Login failed');
+      
       const data = await response.json();
       localStorage.setItem('token', data.token);
       setUser(data.user);
       router.push('/dashboard');
-    } catch (error) {
-      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ⭐ FIXED: Correct endpoint + flow
   const loginWithTikTok = async () => {
     setIsLoading(true);
     try {
-      // Get TikTok auth URL from backend
-      const response = await fetch(`${API_BASE_URL}/auth/tiktok`);
-      const authUrl = await response.text();
-      
-      // Redirect to TikTok OAuth
-      window.location.href = authUrl;
+      const response = await fetch(`${API_BASE_URL}/auth/tiktok/init`); // FIXED
+      const data = await response.json();
+      window.location.href = data.authUrl; // Full redirect (no Next.js router)
     } catch (error) {
       setIsLoading(false);
       throw new Error('TikTok login failed');
@@ -105,23 +91,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, username }),
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Registration failed');
-      }
-
+      if (!response.ok) throw new Error('Registration failed');
+      
       const data = await response.json();
       localStorage.setItem('token', data.token);
       setUser(data.user);
       router.push('/dashboard');
-    } catch (error) {
-      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -134,13 +112,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateUser = (userData: Partial<User>) => {
-    setUser((prev) => (prev ? { ...prev, ...userData } : null));
+    setUser(prev => prev ? { ...prev, ...userData } : null);
   };
 
   return (
-    <AuthContext.Provider
-      value={{ user, isLoading, login, loginWithTikTok, register, logout, updateUser }}
-    >
+    <AuthContext.Provider value={{ 
+      user, isLoading, login, loginWithTikTok, register, logout, updateUser 
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -148,8 +126,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 }

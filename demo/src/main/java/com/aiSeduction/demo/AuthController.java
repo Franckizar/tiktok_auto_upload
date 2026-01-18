@@ -1,22 +1,23 @@
 package com.aiSeduction.demo;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
+import io.jsonwebtoken.Claims;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
+
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Slf4j
 public class AuthController {
 
@@ -24,6 +25,9 @@ public class AuthController {
     private final TikTokService tiktokService;
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
+
+    @Value("${frontend.url:http://localhost:3000}")
+    private String frontendUrl;
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
@@ -53,89 +57,99 @@ public class AuthController {
         }
     }
 
-    @GetMapping("/tiktok")
-    public ResponseEntity<String> getTikTokAuthUrl() {
-        log.info("Request for TikTok auth URL");
+    @GetMapping("/tiktok/init")
+    public ResponseEntity<Map<String, String>> initTikTokAuth() {
+        log.info("TikTok auth initialization requested");
         try {
             String authUrl = tiktokService.getTikTokAuthUrl();
-            log.info("Returning TikTok auth URL");
-            return ResponseEntity.ok(authUrl);
+            Map<String, String> response = new HashMap<>();
+            response.put("authUrl", authUrl);
+            response.put("state", "pkce-protected");
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.error("Failed to generate TikTok auth URL", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to generate authentication URL");
+            log.error("Failed to init TikTok auth", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     @GetMapping("/tiktok/callback")
-    public ResponseEntity<?> handleTikTokCallback(
+    public void handleTikTokCallback(
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String state,
             @RequestParam(required = false) String error,
             @RequestParam(required = false) String error_description,
-            HttpServletRequest request) {
+            HttpServletResponse response) throws IOException {
 
-        log.info("TikTok callback received - code: {}, state: {}, error: {}, error_description: {}", 
-                code, state, error, error_description);
+        log.info("TikTok callback - code: {}, state: {}, error: {}", code, state, error);
 
-        // Handle TikTok errors first - but continue with hardcoded user for testing
-        if (error != null && "access_denied".equals(error)) {
-            log.warn("TikTok returned access_denied - Using hardcoded user for testing");
-            // Continue with hardcoded user creation despite the error
-        } else if (error != null) {
-            log.error("TikTok authorization error: {} - {}", error, error_description);
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("error", error);
-            errorResponse.put("error_description", error_description);
-            errorResponse.put("timestamp", LocalDateTime.now());
-            return ResponseEntity.badRequest().body(errorResponse);
+        if (error != null) {
+            log.error("TikTok error: {} - {}", error, error_description);
+            response.sendRedirect(frontendUrl + "?error=" + error_description);
+            return;
         }
 
         if (code == null || code.isBlank()) {
-            log.warn("Missing authorization code - Using hardcoded flow for testing");
-            // Continue with hardcoded user creation
-        }
-
-        if (state == null || state.isBlank()) {
-            log.warn("Missing state parameter - Using hardcoded flow for testing");
-            // Continue with hardcoded user creation
+            log.error("Missing code");
+            response.sendRedirect(frontendUrl + "?error=Missing authorization code");
+            return;
         }
 
         try {
             User user = tiktokService.handleTikTokCallback(code, state);
             String token = jwtUtil.generateToken(user.getUsername(), user.getId());
-            log.info("Successful TikTok login for user: {}", user.getId());
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("token", token);
-            response.put("user", new UserDto(user));
-            response.put("message", "Logged in with hardcoded TikTok user (actual API returned access_denied)");
-            
-            return ResponseEntity.ok(response);
+            String redirectUrl = String.format(
+                "%s?token=%s&userId=%d&username=%s&state=%s",
+                frontendUrl, token, user.getId(), user.getUsername(), state
+            );
+            log.info("TikTok success, redirecting to: {}", redirectUrl);
+            response.sendRedirect(redirectUrl);
         } catch (Exception e) {
-            log.error("Failed to handle TikTok callback", e);
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("error", "authentication_failed");
-            errorResponse.put("message", "Failed to authenticate with TikTok");
-            errorResponse.put("timestamp", LocalDateTime.now());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            log.error("TikTok callback failed", e);
+            response.sendRedirect(frontendUrl + "?error=" + e.getMessage());
         }
     }
 
-    // Add endpoint to get first user for testing
+    // ⭐ NEW: Next.js /auth/me endpoint (CRITICAL)
+    @GetMapping("/me")
+    public ResponseEntity<UserDto> getCurrentUser(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            
+            String token = authHeader.substring(7);
+            Claims claims = jwtUtil.getClaimsFromToken(token);
+            Long userId = claims.get("userId", Long.class);
+            
+            User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+                
+            return ResponseEntity.ok(new UserDto(user));
+        } catch (Exception e) {
+            log.error("Failed to get current user", e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        Map<String, String> status = new HashMap<>();
+        status.put("status", "UP");
+        status.put("message", "AI Seduction Backend ready");
+        return ResponseEntity.ok(status);
+    }
+
     @GetMapping("/first-user")
     public ResponseEntity<?> getFirstUser() {
         try {
-            Optional<User> firstUser = userRepository.findAll().stream().findFirst();
+            var firstUser = userRepository.findAll().stream().findFirst();
             if (firstUser.isPresent()) {
                 User user = firstUser.get();
                 String token = jwtUtil.generateToken(user.getUsername(), user.getId());
                 return ResponseEntity.ok(new AuthResponse(token, new UserDto(user)));
-            } else {
-                Map<String, Object> response = new HashMap<>();
-                response.put("message", "No users found in database");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", "No users found"));
         } catch (Exception e) {
             log.error("Error getting first user", e);
             throw new RuntimeException("Failed to get first user", e);

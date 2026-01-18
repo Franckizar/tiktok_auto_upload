@@ -4,16 +4,15 @@ import lombok.Data;
 
 @Data
 public class UserDto {
-    private String id;
-    private String email;
+    private Long id;
     private String username;
-    private String role;
+    private String email;
     private boolean tiktokConnected;
     
     public UserDto(User user) {
-        this.id = user.getId().toString();
-        this.email = user.getEmail();
+        this.id = user.getId();
         this.username = user.getUsername();
-        this.role = user.getRole().toString().toLowerCase();
+        this.email = user.getEmail();
         this.tiktokConnected = user.isTiktokConnected();
-    }}
+    }
+}
