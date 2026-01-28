@@ -34,83 +34,117 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  console.log('🔐 AuthProvider mounted');
+
   // Check token on load
   useEffect(() => {
     const token = localStorage.getItem('token');
+    console.log('🔍 Checking token:', token ? 'Found' : 'None');
     if (token && !user) {
       validateToken(token);
     }
   }, []);
 
   const validateToken = async (token: string) => {
+    console.log('🔍 Validating token...');
     try {
       const response = await fetch(`${API_BASE_URL}/auth/me`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
-          ...NGROK_HEADERS  // ✅ BYPASS!
+          ...NGROK_HEADERS
         }
       });
+      console.log('📡 /auth/me response:', response.status, response.statusText);
+      
       if (response.ok) {
         const userData = await response.json();
+        console.log('✅ Valid token, user:', userData);
         setUser(userData);
       } else {
+        console.log('❌ Invalid token, clearing...');
         localStorage.removeItem('token');
       }
-    } catch {
+    } catch (error) {
+      console.error('💥 Token validation error:', error);
       localStorage.removeItem('token');
     }
   };
 
   const login = async (email: string, password: string) => {
+    console.log('🔑 Login attempt:', { email });
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          ...NGROK_HEADERS  // ✅ BYPASS!
+          ...NGROK_HEADERS
         },
         body: JSON.stringify({ email, password }),
       });
-      if (!response.ok) throw new Error('Login failed');
+      console.log('📡 Login response:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Login failed:', response.status, errorText);
+        throw new Error('Login failed');
+      }
       
       const data = await response.json();
+      console.log('✅ Login success:', data.user?.username);
       localStorage.setItem('token', data.token);
       setUser(data.user);
       router.push('/dashboard');
+    } catch (error) {
+      console.error('💥 Login error:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
   const loginWithTikTok = async () => {
+    console.log('🎵 TikTok login initiated');
     setIsLoading(true);
     try {
+      console.log('📡 Calling /auth/tiktok/init...');
       const response = await fetch(`${API_BASE_URL}/auth/tiktok/init`, {
-        headers: NGROK_HEADERS  // ✅ BYPASS!
+        headers: NGROK_HEADERS
       });
+      console.log('📡 TikTok init response:', response.status);
+      
       const data = await response.json();
+      console.log('🔗 TikTok auth URL:', data.authUrl);
       window.location.href = data.authUrl;
     } catch (error) {
+      console.error('💥 TikTok login error:', error);
       setIsLoading(false);
       throw new Error('TikTok login failed');
     }
   };
 
   const register = async (email: string, password: string, username: string) => {
+    console.log('📝 Register attempt:', { email, username });
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          ...NGROK_HEADERS  // ✅ BYPASS!
+          ...NGROK_HEADERS
         },
         body: JSON.stringify({ email, password, username }),
       });
-      if (!response.ok) throw new Error('Registration failed');
+      console.log('📡 Register response:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Register failed:', response.status, errorText);
+        throw new Error('Registration failed');
+      }
       
       const data = await response.json();
+      console.log('✅ Register success:', data.user?.username);
       localStorage.setItem('token', data.token);
       setUser(data.user);
       router.push('/dashboard');
@@ -120,15 +154,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    console.log('🚪 Logging out...');
     localStorage.removeItem('token');
     setUser(null);
     router.push('/auth/login');
   };
 
   const updateUser = (userData: Partial<User>) => {
+    console.log('🔄 Updating user:', userData);
     setUser(prev => prev ? { ...prev, ...userData } : null);
   };
 
+  console.log('👤 Current state:', { user: user?.username || 'none', isLoading });
+  
   return (
     <AuthContext.Provider value={{ 
       user, isLoading, login, loginWithTikTok, register, logout, updateUser 
