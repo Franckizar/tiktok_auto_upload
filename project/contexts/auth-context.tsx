@@ -22,9 +22,12 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-// const API_BASE_URL = 'https://tiktok-automation-tk0j.onrender.com';
 const API_BASE_URL = 'https://modest-integral-ibex.ngrok-free.app';
 
+// ⭐ NGROK BYPASS HEADER
+const NGROK_HEADERS = {
+  'ngrok-skip-browser-warning': 'true'
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -42,7 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const validateToken = async (token: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/me`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          ...NGROK_HEADERS  // ✅ BYPASS!
+        }
       });
       if (response.ok) {
         const userData = await response.json();
@@ -60,7 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...NGROK_HEADERS  // ✅ BYPASS!
+        },
         body: JSON.stringify({ email, password }),
       });
       if (!response.ok) throw new Error('Login failed');
@@ -74,13 +83,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ⭐ FIXED: Correct endpoint + flow
   const loginWithTikTok = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/tiktok/init`); // FIXED
+      const response = await fetch(`${API_BASE_URL}/auth/tiktok/init`, {
+        headers: NGROK_HEADERS  // ✅ BYPASS!
+      });
       const data = await response.json();
-      window.location.href = data.authUrl; // Full redirect (no Next.js router)
+      window.location.href = data.authUrl;
     } catch (error) {
       setIsLoading(false);
       throw new Error('TikTok login failed');
@@ -92,7 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...NGROK_HEADERS  // ✅ BYPASS!
+        },
         body: JSON.stringify({ email, password, username }),
       });
       if (!response.ok) throw new Error('Registration failed');
