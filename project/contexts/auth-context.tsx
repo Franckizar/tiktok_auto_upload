@@ -22,7 +22,8 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const API_BASE_URL = 'https://tiktok-automation-tk0j.onrender.com';
+// const API_BASE_URL = 'https://tiktok-automation-tk0j.onrender.com';
+const API_BASE_URL = 'https://modest-integral-ibex.ngrok-free.app';
 
 
 export function AuthProvider({ children }: { children: ReactNode }) {
