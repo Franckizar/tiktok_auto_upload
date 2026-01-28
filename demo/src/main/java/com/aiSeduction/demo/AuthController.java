@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -109,7 +108,6 @@ public class AuthController {
         }
     }
 
-    // ⭐ NEW: Next.js /auth/me endpoint (CRITICAL)
     @GetMapping("/me")
     public ResponseEntity<UserDto> getCurrentUser(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {

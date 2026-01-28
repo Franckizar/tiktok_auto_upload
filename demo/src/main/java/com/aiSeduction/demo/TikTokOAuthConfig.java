@@ -1,4 +1,3 @@
-// 4. TikTok OAuth Configuration
 package com.aiSeduction.demo;
 
 import lombok.Data;

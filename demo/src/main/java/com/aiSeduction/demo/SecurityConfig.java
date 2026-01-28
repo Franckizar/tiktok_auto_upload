@@ -1,6 +1,5 @@
 package com.aiSeduction.demo;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -20,9 +19,6 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
     
-    @Value("${frontend.url:http://localhost:3000}")
-    private String frontendUrl;
-    
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -35,8 +31,7 @@ public class SecurityConfig {
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/auth/**", "/hello", "/health").permitAll()  // ⭐ Includes /auth/me
-                .anyRequest().authenticated()
+                .anyRequest().permitAll()  // ⭐ TESTING: Open to everyone
             )
             .headers().frameOptions().disable();
         
@@ -46,7 +41,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(frontendUrl, "http://localhost:3000"));
+        // ⭐ FIXED: Added Vercel frontend + ALL origins for testing
+        config.setAllowedOriginPatterns(List.of(
+            "https://tiktok-auto-upload.vercel.app",
+            "http://localhost:3000",
+            "*"  // Testing only - remove in production
+        ));  
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(Arrays.asList("*"));
         config.setAllowCredentials(true);

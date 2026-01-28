@@ -1,0 +1,38 @@
+# REMOVE this line → target/
+# Keep everything else
+
+# Git & Version Control
+.git/
+.gitignore
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.iml
+*.iws
+
+# Logs & Temp files
+*.log
+logs/
+tmp/
+temp/
+
+# Environment & Secrets
+.env
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Maven wrapper
+mvnw
+mvnw.cmd
+.mvn/
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Node modules
+node_modules/
