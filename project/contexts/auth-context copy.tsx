@@ -1,105 +1,175 @@
 // 'use client';
 
-// import React, { createContext, useContext, useState, useEffect } from 'react';
+// import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 // import { useRouter } from 'next/navigation';
-// import Cookies from 'js-cookie';
-// import { authAPI } from '@/lib/api';
 
 // interface User {
 //   id: string;
-//   email: string;
+//   email?: string;
 //   username: string;
 //   role: 'user' | 'admin';
-//   tiktok_connected: boolean;
+//   tiktokConnected: boolean;
 // }
 
 // interface AuthContextType {
 //   user: User | null;
 //   isLoading: boolean;
 //   login: (email: string, password: string) => Promise<void>;
+//   loginWithTikTok: () => Promise<void>;
 //   register: (email: string, password: string, username: string) => Promise<void>;
 //   logout: () => void;
 //   updateUser: (userData: Partial<User>) => void;
 // }
 
 // const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// const API_BASE_URL = 'https://modest-integral-ibex.ngrok-free.app';
 
-// export function AuthProvider({ children }: { children: React.ReactNode }) {
+// // ⭐ NGROK BYPASS HEADER
+// const NGROK_HEADERS = {
+//   'ngrok-skip-browser-warning': 'true'
+// };
+
+// export function AuthProvider({ children }: { children: ReactNode }) {
 //   const [user, setUser] = useState<User | null>(null);
-//   const [isLoading, setIsLoading] = useState(true);
+//   const [isLoading, setIsLoading] = useState(false);
 //   const router = useRouter();
 
-//   useEffect(() => {
-//     const initAuth = async () => {
-//       const token = Cookies.get('auth_token');
-//       if (token) {
-//         try {
-//           const response = await authAPI.getCurrentUser();
-//           setUser(response.data);
-//         } catch (error) {
-//           Cookies.remove('auth_token');
-//         }
-//       }
-//       setIsLoading(false);
-//     };
+//   console.log('🔐 AuthProvider mounted');
 
-//     initAuth();
+//   // Check token on load
+//   useEffect(() => {
+//     const token = localStorage.getItem('token');
+//     console.log('🔍 Checking token:', token ? 'Found' : 'None');
+//     if (token && !user) {
+//       validateToken(token);
+//     }
 //   }, []);
 
-//   const login = async (email: string, password: string) => {
+//   const validateToken = async (token: string) => {
+//     console.log('🔍 Validating token...');
 //     try {
-//       const response = await authAPI.login({ email, password });
-//       const { token, user: userData } = response.data;
-      
-//       Cookies.set('auth_token', token, {
-//         expires: 7,
-//         secure: process.env.NODE_ENV === 'production',
-//         sameSite: 'strict',
+//       const response = await fetch(`${API_BASE_URL}/auth/me`, {
+//         headers: { 
+//           'Authorization': `Bearer ${token}`,
+//           ...NGROK_HEADERS
+//         }
 //       });
+//       console.log('📡 /auth/me response:', response.status, response.statusText);
       
-//       setUser(userData);
+//       if (response.ok) {
+//         const userData = await response.json();
+//         console.log('✅ Valid token, user:', userData);
+//         setUser(userData);
+//       } else {
+//         console.log('❌ Invalid token, clearing...');
+//         localStorage.removeItem('token');
+//       }
+//     } catch (error) {
+//       console.error('💥 Token validation error:', error);
+//       localStorage.removeItem('token');
+//     }
+//   };
+
+//   const login = async (email: string, password: string) => {
+//     console.log('🔑 Login attempt:', { email });
+//     setIsLoading(true);
+//     try {
+//       const response = await fetch(`${API_BASE_URL}/auth/login`, {
+//         method: 'POST',
+//         headers: { 
+//           'Content-Type': 'application/json',
+//           ...NGROK_HEADERS
+//         },
+//         body: JSON.stringify({ email, password }),
+//       });
+//       console.log('📡 Login response:', response.status);
+      
+//       if (!response.ok) {
+//         const errorText = await response.text();
+//         console.error('❌ Login failed:', response.status, errorText);
+//         throw new Error('Login failed');
+//       }
+      
+//       const data = await response.json();
+//       console.log('✅ Login success:', data.user?.username);
+//       localStorage.setItem('token', data.token);
+//       setUser(data.user);
 //       router.push('/dashboard');
-//     } catch (error: any) {
-//       throw new Error(error.response?.data?.message || 'Login failed');
+//     } catch (error) {
+//       console.error('💥 Login error:', error);
+//       throw error;
+//     } finally {
+//       setIsLoading(false);
+//     }
+//   };
+
+//   const loginWithTikTok = async () => {
+//     console.log('🎵 TikTok login initiated');
+//     setIsLoading(true);
+//     try {
+//       console.log('📡 Calling /auth/tiktok/init...');
+//       const response = await fetch(`${API_BASE_URL}/auth/tiktok/init`, {
+//         headers: NGROK_HEADERS
+//       });
+//       console.log('📡 TikTok init response:', response.status);
+      
+//       const data = await response.json();
+//       console.log('🔗 TikTok auth URL:', data.authUrl);
+//       window.location.href = data.authUrl;
+//     } catch (error) {
+//       console.error('💥 TikTok login error:', error);
+//       setIsLoading(false);
+//       throw new Error('TikTok login failed');
 //     }
 //   };
 
 //   const register = async (email: string, password: string, username: string) => {
+//     console.log('📝 Register attempt:', { email, username });
+//     setIsLoading(true);
 //     try {
-//       const response = await authAPI.register({ email, password, username });
-//       const { token, user: userData } = response.data;
-      
-//       Cookies.set('auth_token', token, {
-//         expires: 7,
-//         secure: process.env.NODE_ENV === 'production',
-//         sameSite: 'strict',
+//       const response = await fetch(`${API_BASE_URL}/auth/register`, {
+//         method: 'POST',
+//         headers: { 
+//           'Content-Type': 'application/json',
+//           ...NGROK_HEADERS
+//         },
+//         body: JSON.stringify({ email, password, username }),
 //       });
+//       console.log('📡 Register response:', response.status);
       
-//       setUser(userData);
+//       if (!response.ok) {
+//         const errorText = await response.text();
+//         console.error('❌ Register failed:', response.status, errorText);
+//         throw new Error('Registration failed');
+//       }
+      
+//       const data = await response.json();
+//       console.log('✅ Register success:', data.user?.username);
+//       localStorage.setItem('token', data.token);
+//       setUser(data.user);
 //       router.push('/dashboard');
-//     } catch (error: any) {
-//       throw new Error(error.response?.data?.message || 'Registration failed');
+//     } finally {
+//       setIsLoading(false);
 //     }
 //   };
 
 //   const logout = () => {
-//     Cookies.remove('auth_token');
+//     console.log('🚪 Logging out...');
+//     localStorage.removeItem('token');
 //     setUser(null);
 //     router.push('/auth/login');
 //   };
 
 //   const updateUser = (userData: Partial<User>) => {
+//     console.log('🔄 Updating user:', userData);
 //     setUser(prev => prev ? { ...prev, ...userData } : null);
 //   };
 
+//   console.log('👤 Current state:', { user: user?.username || 'none', isLoading });
+  
 //   return (
-//     <AuthContext.Provider value={{
-//       user,
-//       isLoading,
-//       login,
-//       register,
-//       logout,
-//       updateUser,
+//     <AuthContext.Provider value={{ 
+//       user, isLoading, login, loginWithTikTok, register, logout, updateUser 
 //     }}>
 //       {children}
 //     </AuthContext.Provider>
@@ -108,8 +178,6 @@
 
 // export function useAuth() {
 //   const context = useContext(AuthContext);
-//   if (context === undefined) {
-//     throw new Error('useAuth must be used within an AuthProvider');
-//   }
+//   if (!context) throw new Error('useAuth must be used within AuthProvider');
 //   return context;
 // }

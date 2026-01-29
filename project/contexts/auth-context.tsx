@@ -19,34 +19,94 @@ interface AuthContextType {
   register: (email: string, password: string, username: string) => Promise<void>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
+  toggleTestMode: () => void;
+  isTestMode: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const API_BASE_URL = 'https://modest-integral-ibex.ngrok-free.app';
 
-// ⭐ NGROK BYPASS HEADER
 const NGROK_HEADERS = {
   'ngrok-skip-browser-warning': 'true'
 };
 
+const TEST_USERS = {
+  user: {
+    id: 'test-user-1',
+    email: 'test@example.com',
+    username: 'testuser',
+    role: 'user' as const,
+    tiktokConnected: false
+  },
+  admin: {
+    id: 'test-admin-1',
+    email: 'admin@example.com',
+    username: 'admin',
+    role: 'admin' as const,
+    tiktokConnected: true
+  }
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // ✅ CRITICAL FIX: Start with isLoading=true to prevent premature redirects
+  const [isLoading, setIsLoading] = useState(true);
+  const [isTestMode, setIsTestMode] = useState(false);
   const router = useRouter();
 
-  console.log('🔐 AuthProvider mounted');
+  console.log('🔐 AuthProvider mounted', { isTestMode });
 
-  // Check token on load
+  // ✅ Check token on mount (runs once)
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    console.log('🔍 Checking token:', token ? 'Found' : 'None');
-    if (token && !user) {
-      validateToken(token);
-    }
-  }, []);
+    const initAuth = async () => {
+      if (isTestMode) {
+        console.log('🧪 TEST MODE: Skipping token validation');
+        setIsLoading(false);
+        return;
+      }
+      
+      const token = localStorage.getItem('token');
+      console.log('🔍 Checking token:', token ? 'Found' : 'None');
+      
+      if (token) {
+        await validateToken(token);
+      } else {
+        console.log('❌ No token found');
+        setIsLoading(false);
+      }
+    };
+
+    initAuth();
+  }, []); // ✅ Empty dependency array - only run once on mount
+
+  const toggleTestMode = () => {
+    console.log('🔄 TOGGLING TEST MODE:', !isTestMode);
+    setIsTestMode(prev => {
+      const newMode = !prev;
+      
+      if (newMode) {
+        setUser(TEST_USERS.user);
+        localStorage.setItem('token', 'test-mode-token');
+        console.log('🧪 TEST MODE ENABLED - Auto-logged as:', TEST_USERS.user.username);
+      } else {
+        setUser(null);
+        localStorage.removeItem('token');
+        console.log('🔐 TEST MODE DISABLED - Back to real auth');
+      }
+      
+      return newMode;
+    });
+  };
 
   const validateToken = async (token: string) => {
+    if (isTestMode) {
+      setIsLoading(false);
+      return;
+    }
+    
     console.log('🔍 Validating token...');
+    setIsLoading(true); // ✅ Set loading while validating
+    
     try {
       const response = await fetch(`${API_BASE_URL}/auth/me`, {
         headers: { 
@@ -63,14 +123,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         console.log('❌ Invalid token, clearing...');
         localStorage.removeItem('token');
+        setUser(null);
       }
     } catch (error) {
       console.error('💥 Token validation error:', error);
       localStorage.removeItem('token');
+      setUser(null);
+    } finally {
+      // ✅ CRITICAL: Always set isLoading to false when done
+      setIsLoading(false);
     }
   };
 
   const login = async (email: string, password: string) => {
+    if (isTestMode) {
+      console.log('🧪 TEST MODE: Fake login success');
+      return;
+    }
+
     console.log('🔑 Login attempt:', { email });
     setIsLoading(true);
     try {
@@ -104,6 +174,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loginWithTikTok = async () => {
+    if (isTestMode) {
+      console.log('🧪 TEST MODE: Fake TikTok login');
+      setUser(TEST_USERS.admin);
+      return;
+    }
+
     console.log('🎵 TikTok login initiated');
     setIsLoading(true);
     try {
@@ -124,6 +200,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (email: string, password: string, username: string) => {
+    if (isTestMode) {
+      console.log('🧪 TEST MODE: Fake register success');
+      return;
+    }
+
     console.log('📝 Register attempt:', { email, username });
     setIsLoading(true);
     try {
@@ -155,9 +236,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     console.log('🚪 Logging out...');
-    localStorage.removeItem('token');
+    if (!isTestMode) {
+      localStorage.removeItem('token');
+    }
     setUser(null);
-    router.push('/auth/login');
+    if (!isTestMode) {
+      router.push('/auth/login');
+    }
   };
 
   const updateUser = (userData: Partial<User>) => {
@@ -165,11 +250,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(prev => prev ? { ...prev, ...userData } : null);
   };
 
-  console.log('👤 Current state:', { user: user?.username || 'none', isLoading });
+  console.log('👤 Current state:', { 
+    user: user?.username || 'none', 
+    isLoading, 
+    isTestMode,
+    testModeStatus: isTestMode ? '🧪 ACTIVE' : '🔐 REAL'
+  });
   
   return (
     <AuthContext.Provider value={{ 
-      user, isLoading, login, loginWithTikTok, register, logout, updateUser 
+      user, 
+      isLoading, 
+      login, 
+      loginWithTikTok, 
+      register, 
+      logout, 
+      updateUser,
+      toggleTestMode,
+      isTestMode
     }}>
       {children}
     </AuthContext.Provider>

@@ -17,12 +17,18 @@ export default function DashboardLayout({
   const router = useRouter();
 
   useEffect(() => {
+    // ✅ FIXED: Only redirect if we're SURE there's no user (after loading completes)
     if (!isLoading && !user) {
+      console.log('❌ No user found after loading, redirecting to login');
       router.push('/auth/login');
+    } else if (user) {
+      console.log('✅ User found:', user.username);
     }
   }, [user, isLoading, router]);
 
+  // ✅ CRITICAL: Show loading screen while checking auth
   if (isLoading) {
+    console.log('⏳ Auth is loading...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <motion.div
@@ -35,9 +41,13 @@ export default function DashboardLayout({
     );
   }
 
+  // ✅ Show nothing while redirecting
   if (!user) {
+    console.log('❌ No user, returning null (redirecting...)');
     return null;
   }
+
+  console.log('✅ Rendering dashboard for:', user.username);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
