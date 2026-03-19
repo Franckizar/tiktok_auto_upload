@@ -22,7 +22,7 @@ export default function DashboardLayout({
       console.log('❌ No user found after loading, redirecting to login');
       router.push('/auth/login');
     } else if (user) {
-      console.log('✅ User found:', user.username);
+      console.log('✅ User found:', user.displayName || user.firstname);
     }
   }, [user, isLoading, router]);
 
@@ -47,7 +47,7 @@ export default function DashboardLayout({
     return null;
   }
 
-  console.log('✅ Rendering dashboard for:', user.username);
+console.log('✅ Rendering dashboard for:', user.displayName || user.firstname);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">

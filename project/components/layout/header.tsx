@@ -3,7 +3,7 @@
 import { Bell, Search, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -16,6 +16,8 @@ import { useAuth } from '@/contexts/auth-context';
 
 export function Header() {
   const { user, logout } = useAuth();
+
+  const displayName = user?.displayName || user?.firstname || 'User';
 
   return (
     <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6">
@@ -42,7 +44,7 @@ export function Header() {
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="tiktok-gradient text-white">
-                  {user?.username?.[0]?.toUpperCase()}
+                  {displayName[0]?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -50,7 +52,7 @@ export function Header() {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.username}</p>
+                <p className="text-sm font-medium leading-none">{displayName}</p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {user?.email}
                 </p>

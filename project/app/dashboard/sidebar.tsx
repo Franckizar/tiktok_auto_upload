@@ -37,21 +37,20 @@ export function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
 
-  // Only render window-dependent code after mount
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  const allNavigation = user?.role === 'admin' 
-    ? [...navigation, ...adminNavigation] 
+  const allNavigation = user?.role === 'admin'
+    ? [...navigation, ...adminNavigation]
     : navigation;
 
-  // Don't render window-dependent animation or positioning until mounted
   const sidebarX = isMobileOpen || (isMounted && window.innerWidth >= 768) ? 0 : -280;
+
+  const displayName = user?.displayName || user?.firstname || 'User';
 
   return (
     <>
-      {/* Mobile menu button */}
       <Button
         variant="ghost"
         size="sm"
@@ -61,7 +60,6 @@ export function Sidebar() {
         {isMobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
       </Button>
 
-      {/* Mobile overlay */}
       {isMobileOpen && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -72,7 +70,6 @@ export function Sidebar() {
         />
       )}
 
-      {/* Sidebar */}
       <motion.div
         initial={{ x: -280 }}
         animate={{ x: sidebarX }}
@@ -82,7 +79,6 @@ export function Sidebar() {
           'flex flex-col shadow-lg'
         )}
       >
-        {/* Logo */}
         <div className="p-6 border-b border-gray-200">
           <Link href="/dashboard" className="flex items-center space-x-2">
             <div className="w-8 h-8 tiktok-gradient rounded-lg flex items-center justify-center">
@@ -92,7 +88,6 @@ export function Sidebar() {
           </Link>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 p-4">
           <ul className="space-y-2">
             {allNavigation.map((item) => {
@@ -108,11 +103,11 @@ export function Sidebar() {
                       isActive && 'bg-primary/10 text-primary font-medium'
                     )}
                   >
-                    <item.icon 
+                    <item.icon
                       className={cn(
                         'h-5 w-5 transition-colors',
                         isActive ? 'text-primary' : 'text-gray-500 group-hover:text-gray-700'
-                      )} 
+                      )}
                     />
                     <span>{item.name}</span>
                     {isActive && (
@@ -125,17 +120,16 @@ export function Sidebar() {
           </ul>
         </nav>
 
-        {/* User info */}
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-gradient-to-r from-tiktok-pink to-tiktok-cyan rounded-full flex items-center justify-center">
               <span className="text-white text-sm font-medium">
-                {user?.username?.[0]?.toUpperCase()}
+                {displayName[0]?.toUpperCase()}
               </span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
-                {user?.username}
+                {displayName}
               </p>
               <p className="text-xs text-gray-500 truncate">
                 {user?.email}

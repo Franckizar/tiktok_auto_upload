@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/auth-context";
 import Link from "next/link";
 
 const registerSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
+  firstname: z.string().min(2, "First name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
@@ -43,7 +43,7 @@ export function RegisterForm() {
   const onSubmit = async (data: RegisterForm) => {
     setError("");
     try {
-      await registerUser(data.email, data.password, data.username);
+      await registerUser(data.email, data.password, data.firstname, '');
     } catch (err: any) {
       setError(err?.message || "Registration failed.");
     }
@@ -68,15 +68,15 @@ export function RegisterForm() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="firstname">First Name</Label>
               <Input
-                id="username"
-                placeholder="Choose a username"
-                {...register("username")}
-                className={errors.username ? "border-destructive" : ""}
+                id="firstname"
+                placeholder="Enter your first name"
+                {...register("firstname")}
+                className={errors.firstname ? "border-destructive" : ""}
               />
-              {errors.username && (
-                <p className="text-sm text-destructive">{errors.username.message}</p>
+              {errors.firstname && (
+                <p className="text-sm text-destructive">{errors.firstname.message}</p>
               )}
             </div>
 
@@ -131,9 +131,7 @@ export function RegisterForm() {
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm your password"
                   {...register("confirmPassword")}
-                  className={
-                    errors.confirmPassword ? "border-destructive pr-10" : "pr-10"
-                  }
+                  className={errors.confirmPassword ? "border-destructive pr-10" : "pr-10"}
                 />
                 <Button
                   type="button"
