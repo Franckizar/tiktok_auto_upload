@@ -190,25 +190,47 @@ public class TikTokService {
 
     private User createOrUpdateTikTokUser(JsonNode userInfo, TokenResponse tokenResponse) {
         String tiktokId = userInfo.get("open_id").asText();
-        String username = userInfo.has("username") ? userInfo.get("username").asText() : "tiktok_" + tiktokId.substring(0, 8);
+        
+        // ✅ Extract all available TikTok profile data
+        String displayName = userInfo.has("display_name") ? 
+            userInfo.get("display_name").asText() : null;
+        
+        String avatarUrl = userInfo.has("avatar_url") ? 
+            userInfo.get("avatar_url").asText() : null;
+        
+        String unionId = userInfo.has("union_id") ? 
+            userInfo.get("union_id").asText() : null;
+        
+        // Use display_name for username if available, otherwise auto-generate
+        String username = (displayName != null && !displayName.isBlank()) ? 
+            displayName : 
+            "tiktok_" + tiktokId.substring(0, 8);
 
         Optional<User> existing = userRepository.findByTiktokId(tiktokId);
         User user = existing.orElseGet(User::new);
 
+        // ✅ Save TikTok OAuth data
         user.setTiktokId(tiktokId);
         user.setUsername(username);
         user.setTiktokAccessToken(tokenResponse.accessToken());
         user.setTiktokRefreshToken(tokenResponse.refreshToken());
         user.setTiktokConnected(true);
         user.setTiktokTokenExpiry(LocalDateTime.now().plusSeconds(tokenResponse.expiresIn()));
-        // ✅ REMOVED: user.setRole(Role.USER) - not needed for basic login
+        
+        // ✅ Save TikTok profile data
+        user.setDisplayName(displayName);
+        user.setAvatarUrl(avatarUrl);
+        user.setUnionId(unionId);
+        
         user.setUpdatedAt(LocalDateTime.now());
 
         if (user.getId() == null) {
             user.setCreatedAt(LocalDateTime.now());
-            log.info("🆕 New TikTok user created: {}", username);
+            log.info("🆕 New TikTok user created: {} | display_name: {} | avatar: {}", 
+                username, displayName, avatarUrl != null ? "✅" : "❌");
         } else {
-            log.info("🔄 Existing TikTok user updated: {}", username);
+            log.info("🔄 Existing TikTok user updated: {} | display_name: {} | avatar: {}", 
+                username, displayName, avatarUrl != null ? "✅" : "❌");
         }
 
         return userRepository.save(user);

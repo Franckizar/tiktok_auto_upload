@@ -20,7 +20,10 @@ export default function Login() {
     try {
       const response = await fetch("http://localhost:8088/api/v1/auth/authenticate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json",
+          'ngrok-skip-browser-warning': 'true' 
+         },
+        
         body: JSON.stringify({ email, password }),
       });
 

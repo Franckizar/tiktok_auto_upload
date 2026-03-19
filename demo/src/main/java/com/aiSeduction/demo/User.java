@@ -27,12 +27,23 @@ public class User {
     // @Enumerated(EnumType.STRING)
     // private Role role = Role.USER;
     
+    // ✅ TikTok OAuth fields
     private String tiktokId;
     private String tiktokUsername;
     private String tiktokAccessToken;
     private String tiktokRefreshToken;
     private LocalDateTime tiktokTokenExpiry;
     private boolean tiktokConnected = false;
+    
+    // ✅ NEW: TikTok profile fields
+    @Column(name = "display_name")
+    private String displayName;  // TikTok display name (e.g., "anime mix")
+    
+    @Column(name = "avatar_url", length = 1000)
+    private String avatarUrl;  // TikTok profile picture URL
+    
+    @Column(name = "union_id")
+    private String unionId;  // TikTok cross-app identifier
     
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt = LocalDateTime.now();

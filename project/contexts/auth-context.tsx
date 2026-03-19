@@ -6,8 +6,11 @@ import { useRouter } from 'next/navigation';
 interface User {
   id: string;
   email?: string;
-  username: string;
-  role: 'user' | 'admin';
+  firstname?: string;
+  displayName?: string;
+  avatarUrl?: string;
+  tiktokId?: string;
+  role: string;
   tiktokConnected: boolean;
 }
 
@@ -16,154 +19,138 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithTikTok: () => Promise<void>;
-  register: (email: string, password: string, username: string) => Promise<void>;
-  logout: () => void;
+  register: (email: string, password: string, firstname: string, lastname: string) => Promise<void>;
+  logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
   toggleTestMode: () => void;
   isTestMode: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
 const API_BASE_URL = 'https://modest-integral-ibex.ngrok-free.app';
 
-const NGROK_HEADERS = {
-  'ngrok-skip-browser-warning': 'true'
+const HEADERS = {
+  'ngrok-skip-browser-warning': 'true',
+  'Content-Type': 'application/json'
 };
 
 const TEST_USERS = {
   user: {
     id: 'test-user-1',
     email: 'test@example.com',
-    username: 'testuser',
-    role: 'user' as const,
+    firstname: 'Test',
+    displayName: 'testuser',
+    role: 'PLAYER',
     tiktokConnected: false
   },
   admin: {
     id: 'test-admin-1',
     email: 'admin@example.com',
-    username: 'admin',
-    role: 'admin' as const,
+    firstname: 'Admin',
+    displayName: 'admin',
+    role: 'ADMIN',
     tiktokConnected: true
   }
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  // ✅ CRITICAL FIX: Start with isLoading=true to prevent premature redirects
   const [isLoading, setIsLoading] = useState(true);
   const [isTestMode, setIsTestMode] = useState(false);
   const router = useRouter();
 
-  console.log('🔐 AuthProvider mounted', { isTestMode });
-
-  // ✅ Check token on mount (runs once)
+  // ========================================
+  // ON MOUNT — check if user is logged in via cookies
+  // ========================================
   useEffect(() => {
     const initAuth = async () => {
       if (isTestMode) {
-        console.log('🧪 TEST MODE: Skipping token validation');
         setIsLoading(false);
         return;
       }
-      
-      const token = localStorage.getItem('token');
-      console.log('🔍 Checking token:', token ? 'Found' : 'None');
-      
-      if (token) {
-        await validateToken(token);
-      } else {
-        console.log('❌ No token found');
-        setIsLoading(false);
-      }
+      await fetchCurrentUser();
     };
-
     initAuth();
-  }, []); // ✅ Empty dependency array - only run once on mount
+  }, []);
 
+  // ========================================
+  // FETCH CURRENT USER — uses HTTP-only cookie
+  // ========================================
+  const fetchCurrentUser = async () => {
+    console.log('🔍 Checking current user via cookies...');
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+        method: 'GET',
+        credentials: 'include', // ← sends cookies automatically
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
+
+      console.log('📡 /me response:', response.status);
+
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('✅ User found:', userData);
+        setUser(userData);
+      } else {
+        console.log('❌ Not authenticated');
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('💥 Auth check error:', error);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ========================================
+  // TEST MODE TOGGLE
+  // ========================================
   const toggleTestMode = () => {
-    console.log('🔄 TOGGLING TEST MODE:', !isTestMode);
     setIsTestMode(prev => {
       const newMode = !prev;
-      
       if (newMode) {
-        setUser(TEST_USERS.user);
-        localStorage.setItem('token', 'test-mode-token');
-        console.log('🧪 TEST MODE ENABLED - Auto-logged as:', TEST_USERS.user.username);
+        setUser(TEST_USERS.user as User);
+        console.log('🧪 TEST MODE ENABLED');
       } else {
         setUser(null);
-        localStorage.removeItem('token');
-        console.log('🔐 TEST MODE DISABLED - Back to real auth');
+        console.log('🔐 TEST MODE DISABLED');
       }
-      
       return newMode;
     });
   };
 
-  const validateToken = async (token: string) => {
-    if (isTestMode) {
-      setIsLoading(false);
-      return;
-    }
-    
-    console.log('🔍 Validating token...');
-    setIsLoading(true); // ✅ Set loading while validating
-    
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/me`, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          ...NGROK_HEADERS
-        }
-      });
-      console.log('📡 /auth/me response:', response.status, response.statusText);
-      
-      if (response.ok) {
-        const userData = await response.json();
-        console.log('✅ Valid token, user:', userData);
-        setUser(userData);
-      } else {
-        console.log('❌ Invalid token, clearing...');
-        localStorage.removeItem('token');
-        setUser(null);
-      }
-    } catch (error) {
-      console.error('💥 Token validation error:', error);
-      localStorage.removeItem('token');
-      setUser(null);
-    } finally {
-      // ✅ CRITICAL: Always set isLoading to false when done
-      setIsLoading(false);
-    }
-  };
-
+  // ========================================
+  // LOGIN — email + password
+  // ========================================
   const login = async (email: string, password: string) => {
     if (isTestMode) {
-      console.log('🧪 TEST MODE: Fake login success');
+      console.log('🧪 TEST MODE: Fake login');
       return;
     }
 
-    console.log('🔑 Login attempt:', { email });
+    console.log('🔑 Login attempt:', email);
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/authenticate`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...NGROK_HEADERS
-        },
+        credentials: 'include', // ← receives cookies from backend
+        headers: HEADERS,
         body: JSON.stringify({ email, password }),
       });
+
       console.log('📡 Login response:', response.status);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Login failed:', response.status, errorText);
+        console.error('❌ Login failed:', errorText);
         throw new Error('Login failed');
       }
-      
-      const data = await response.json();
-      console.log('✅ Login success:', data.user?.username);
-      localStorage.setItem('token', data.token);
-      setUser(data.user);
+
+      // Backend sets cookies — now fetch user data
+      await fetchCurrentUser();
       router.push('/dashboard');
     } catch (error) {
       console.error('💥 Login error:', error);
@@ -173,24 +160,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // ========================================
+  // TIKTOK LOGIN
+  // ========================================
   const loginWithTikTok = async () => {
     if (isTestMode) {
       console.log('🧪 TEST MODE: Fake TikTok login');
-      setUser(TEST_USERS.admin);
+      setUser(TEST_USERS.admin as User);
       return;
     }
 
     console.log('🎵 TikTok login initiated');
     setIsLoading(true);
     try {
-      console.log('📡 Calling /auth/tiktok/init...');
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/tiktok/init`, {
-        headers: NGROK_HEADERS
+        headers: { 'ngrok-skip-browser-warning': 'true' }
       });
+
       console.log('📡 TikTok init response:', response.status);
-      
+
       const data = await response.json();
-      console.log('🔗 TikTok auth URL:', data.authUrl);
+      console.log('🔗 Redirecting to TikTok...');
+
+      // Redirect to TikTok OAuth page
       window.location.href = data.authUrl;
     } catch (error) {
       console.error('💥 TikTok login error:', error);
@@ -199,72 +191,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, username: string) => {
+  // ========================================
+  // REGISTER
+  // ========================================
+  const register = async (email: string, password: string, firstname: string, lastname: string) => {
     if (isTestMode) {
-      console.log('🧪 TEST MODE: Fake register success');
+      console.log('🧪 TEST MODE: Fake register');
       return;
     }
 
-    console.log('📝 Register attempt:', { email, username });
+    console.log('📝 Register attempt:', email);
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...NGROK_HEADERS
-        },
-        body: JSON.stringify({ email, password, username }),
+        credentials: 'include',
+        headers: HEADERS,
+        body: JSON.stringify({ email, password, firstname, lastname }),
       });
+
       console.log('📡 Register response:', response.status);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Register failed:', response.status, errorText);
+        console.error('❌ Register failed:', errorText);
         throw new Error('Registration failed');
       }
-      
-      const data = await response.json();
-      console.log('✅ Register success:', data.user?.username);
-      localStorage.setItem('token', data.token);
-      setUser(data.user);
-      router.push('/dashboard');
+
+      // Registration sends verification email — don't redirect to dashboard
+      // Redirect to verify email page instead
+      router.push('/auth/verify-email');
+    } catch (error) {
+      console.error('💥 Register error:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
+  // ========================================
+  // LOGOUT
+  // ========================================
+  const logout = async () => {
     console.log('🚪 Logging out...');
-    if (!isTestMode) {
-      localStorage.removeItem('token');
-    }
-    setUser(null);
-    if (!isTestMode) {
+    try {
+      await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
       router.push('/auth/login');
     }
   };
 
+  // ========================================
+  // UPDATE USER
+  // ========================================
   const updateUser = (userData: Partial<User>) => {
-    console.log('🔄 Updating user:', userData);
     setUser(prev => prev ? { ...prev, ...userData } : null);
   };
 
-  console.log('👤 Current state:', { 
-    user: user?.username || 'none', 
-    isLoading, 
-    isTestMode,
-    testModeStatus: isTestMode ? '🧪 ACTIVE' : '🔐 REAL'
-  });
-  
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isLoading, 
-      login, 
-      loginWithTikTok, 
-      register, 
-      logout, 
+    <AuthContext.Provider value={{
+      user,
+      isLoading,
+      login,
+      loginWithTikTok,
+      register,
+      logout,
       updateUser,
       toggleTestMode,
       isTestMode
