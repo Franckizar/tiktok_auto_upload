@@ -24,6 +24,7 @@ interface AuthContextType {
   updateUser: (userData: Partial<User>) => void;
   toggleTestMode: () => void;
   isTestMode: boolean;
+  fetchCurrentUser: () => Promise<void>;  // ← ADDED
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -60,9 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isTestMode, setIsTestMode] = useState(false);
   const router = useRouter();
 
-  // ========================================
-  // ON MOUNT — check if user is logged in via cookies
-  // ========================================
   useEffect(() => {
     const initAuth = async () => {
       if (isTestMode) {
@@ -74,16 +72,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth();
   }, []);
 
-  // ========================================
-  // FETCH CURRENT USER — uses HTTP-only cookie
-  // ========================================
   const fetchCurrentUser = async () => {
     console.log('🔍 Checking current user via cookies...');
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/shared/profile/me`, {
         method: 'GET',
-        credentials: 'include', // ← sends cookies automatically
+        credentials: 'include',
         headers: { 'ngrok-skip-browser-warning': 'true' }
       });
 
@@ -105,9 +100,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ========================================
-  // TEST MODE TOGGLE
-  // ========================================
   const toggleTestMode = () => {
     setIsTestMode(prev => {
       const newMode = !prev;
@@ -122,34 +114,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // ========================================
-  // LOGIN — email + password
-  // ========================================
   const login = async (email: string, password: string) => {
-    if (isTestMode) {
-      console.log('🧪 TEST MODE: Fake login');
-      return;
-    }
-
+    if (isTestMode) return;
     console.log('🔑 Login attempt:', email);
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/authenticate`, {
         method: 'POST',
-        credentials: 'include', // ← receives cookies from backend
+        credentials: 'include',
         headers: HEADERS,
         body: JSON.stringify({ email, password }),
       });
 
-      console.log('📡 Login response:', response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Login failed:', errorText);
         throw new Error('Login failed');
       }
 
-      // Backend sets cookies — now fetch user data
       await fetchCurrentUser();
       router.push('/dashboard');
     } catch (error) {
@@ -160,12 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ========================================
-  // TIKTOK LOGIN
-  // ========================================
   const loginWithTikTok = async () => {
     if (isTestMode) {
-      console.log('🧪 TEST MODE: Fake TikTok login');
       setUser(TEST_USERS.admin as User);
       return;
     }
@@ -177,12 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { 'ngrok-skip-browser-warning': 'true' }
       });
 
-      console.log('📡 TikTok init response:', response.status);
-
       const data = await response.json();
-      console.log('🔗 Redirecting to TikTok...');
-
-      // Redirect to TikTok OAuth page
       window.location.href = data.authUrl;
     } catch (error) {
       console.error('💥 TikTok login error:', error);
@@ -191,15 +163,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ========================================
-  // REGISTER
-  // ========================================
   const register = async (email: string, password: string, firstname: string, lastname: string) => {
-    if (isTestMode) {
-      console.log('🧪 TEST MODE: Fake register');
-      return;
-    }
-
+    if (isTestMode) return;
     console.log('📝 Register attempt:', email);
     setIsLoading(true);
     try {
@@ -210,16 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password, firstname, lastname }),
       });
 
-      console.log('📡 Register response:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Register failed:', errorText);
-        throw new Error('Registration failed');
-      }
-
-      // Registration sends verification email — don't redirect to dashboard
-      // Redirect to verify email page instead
+      if (!response.ok) throw new Error('Registration failed');
       router.push('/auth/verify-email');
     } catch (error) {
       console.error('💥 Register error:', error);
@@ -229,9 +185,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ========================================
-  // LOGOUT
-  // ========================================
   const logout = async () => {
     console.log('🚪 Logging out...');
     try {
@@ -248,9 +201,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ========================================
-  // UPDATE USER
-  // ========================================
   const updateUser = (userData: Partial<User>) => {
     setUser(prev => prev ? { ...prev, ...userData } : null);
   };
@@ -265,7 +215,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       updateUser,
       toggleTestMode,
-      isTestMode
+      isTestMode,
+      fetchCurrentUser  // ← ADDED
     }}>
       {children}
     </AuthContext.Provider>

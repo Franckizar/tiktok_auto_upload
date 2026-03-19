@@ -1,31 +1,19 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 
 export default function AuthCallback() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { updateUser } = useAuth(); // Optional: integrate with AuthContext
+  const { fetchCurrentUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
-  // Handle callback once params available
   useEffect(() => {
-    const token = searchParams.get('token');
     const errorParam = searchParams.get('error');
-    const userId = searchParams.get('userId');
-    const username = searchParams.get('username');
-
-    console.log('🔗 Callback params:', { 
-      token: token ? `${token.slice(0,20)}...` : null, 
-      userId, 
-      username, 
-      error: errorParam 
-    });
 
     if (errorParam) {
-      console.error('❌ TikTok auth error:', errorParam);
       setError(decodeURIComponent(errorParam));
       setTimeout(() => {
         router.push('/auth/login?error=' + encodeURIComponent(errorParam));
@@ -33,31 +21,20 @@ export default function AuthCallback() {
       return;
     }
 
-    if (token && userId) {
-      // ✅ Store auth data
-      localStorage.setItem('token', token);
-      localStorage.setItem('userId', userId);
-      if (username) localStorage.setItem('username', username);
-      
-      // ✅ Optional: Update AuthContext
-      if (updateUser) {
-        updateUser({
-          id: userId,
-          username: username || 'tiktok_user',
-          role: 'user',
-          tiktokConnected: true
-        });
+    const completeLogin = async () => {
+      try {
+        console.log('🔗 Completing TikTok login via cookies...');
+        await fetchCurrentUser();
+        console.log('✅ Login complete, redirecting to dashboard');
+        router.replace('/dashboard');
+      } catch (err) {
+        console.error('💥 Failed to complete login:', err);
+        router.push('/auth/login?error=login_failed');
       }
-      
-      console.log('✅ TikTok login successful! Redirecting...');
-      router.replace('/dashboard'); // replace() prevents back button issues
-    } else {
-      setError('Missing authentication credentials');
-      setTimeout(() => {
-        router.push('/auth/login?error=missing_credentials');
-      }, 3000);
-    }
-  }, [searchParams, router, updateUser]);
+    };
+
+    completeLogin();
+  }, []);
 
   if (error) {
     return (
@@ -72,7 +49,7 @@ export default function AuthCallback() {
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Authentication Failed</h2>
             <p className="text-gray-600 mb-6">{error}</p>
             <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-              Redirecting to login page in <span id="countdown">3</span>s...
+              Redirecting to login page...
             </p>
           </div>
         </div>
