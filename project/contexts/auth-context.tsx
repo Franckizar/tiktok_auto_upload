@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('🔍 Checking current user via cookies...');
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/shared/profile/me`, {
         method: 'GET',
         credentials: 'include', // ← sends cookies automatically
         headers: { 'ngrok-skip-browser-warning': 'true' }
