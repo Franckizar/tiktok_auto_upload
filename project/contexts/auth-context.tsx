@@ -184,7 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       console.log('📡 Calling /auth/tiktok/init...');
-      const response = await fetch(`${API_BASE_URL}/auth/tiktok/init`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/tiktok/init`, {
         headers: NGROK_HEADERS
       });
       console.log('📡 TikTok init response:', response.status);
